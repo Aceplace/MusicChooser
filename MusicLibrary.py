@@ -3,7 +3,8 @@ import os
 import random
 from itertools import chain
 
-library_path = "E:\CoachYeiter Drive\Cheltenham2019\CheltenhamPlaylists2019\Library"
+
+test_library_path = "E:\CoachYeiter Drive\Cheltenham2019\CheltenhamPlaylists2019\Library"
 
 
 def create_library(path):
@@ -94,18 +95,21 @@ def calculate_relative_frequency(priorities, categories_num_songs, weights, numb
     print(relative_frequencies)
 
 
-library = create_library(library_path)
-priority_info = get_priority_number_of_songs(library)
-print(priority_info)
-calculate_relative_frequency(*zip(*priority_info), [100, 100, 100, 100, 100], 40)
+if __name__ == '__main__':
+    def main():
+        library = create_library(test_library_path)
+        priority_info = get_priority_number_of_songs(library)
+        print(priority_info)
+        calculate_relative_frequency(*zip(*priority_info), [100, 100, 100, 100, 100], 40)
 
-for i in range(1000):
-    print('Processing Playlists: ' + str(i))
-    for _ in range(40):
-        pick_random_song_from_library(library, [(1, 100), (2, 100), (3, 100), (4, 100), (5, 100)])
+        for i in range(1000):
+            print('Processing Playlists: ' + str(i))
+            for _ in range(40):
+                pick_random_song_from_library(library, [(1, 100), (2, 100), (3, 100), (4, 100), (5, 100)])
 
-with open('repeat data.txt', 'w') as file:
-    for category in library['categories'].keys():
-        file.write(category + '\n')
-        for song in library['categories'][category]:
-            file.write('{:15}{:15}{}\n'.format(f"Priority:{song['priority']}", f"Repeats:{song['number_of_repeats']}", f"{song['song_name']}"))
+        with open('repeat data.txt', 'w') as file:
+            for category in library['categories'].keys():
+                file.write(category + '\n')
+                for song in library['categories'][category]:
+                    file.write('{:15}{:15}{}\n'.format(f"Priority:{song['priority']}", f"Repeats:{song['number_of_repeats']}", f"{song['song_name']}"))
+    main()

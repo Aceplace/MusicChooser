@@ -10,7 +10,10 @@ test_library_path = "E:\CoachYeiter Drive\Cheltenham2019\CheltenhamPlaylists2019
 def create_library(path):
     music_subdirectories = [name for name in os.listdir(path) if os.path.isdir(os.path.join(path, name))]
 
-    library = {'categories': {}}
+    library = {
+        'categories': {},
+        'weights': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    }
 
     for subdirectory in music_subdirectories:
         music_file_names = [file_path for file_path in os.listdir(os.path.join(path, subdirectory))
@@ -27,9 +30,8 @@ def create_library(path):
                 'artist_name': artist_name,
                 'song_name': song_name,
                 'file_path': music_file_path,
-                'priority': random.choices([1, 2, 3, 4, 5], [1, 2, 4, 8, 16])[0],
+                'priority': random.choices(list(range(10)), [0, 1, 2, 4, 8, 16, 0, 0, 0, 0])[0],
                 'number_of_repeats': 0
-                # 'priority': 1
             }
             library['categories'][subdirectory].append(song_dict)
 
@@ -56,6 +58,8 @@ def get_updated_library(old_library, library_path):
             for song in old_library['categories'][category]:
                 copy_over_priority(song, library['categories'][category])
 
+    library['weights'] = old_library['weights']
+
     return library
 
 
@@ -68,8 +72,20 @@ def copy_over_priority(song_to_copy_priority, category_songs):
         song['priority'] = song_to_copy_priority['priority']
 
 
-def pick_random_song_from_library(library, priority_weights):
-    priority = random.choices(*zip(*priority_weights))[0]
+def reset_repeat_data(library):
+    for song in chain(*library['categories'].values()):
+        song['number_of_repeats'] = 0
+
+
+def pick_random_song_from_library(library):
+    valid_priorities = [priority for priority in range(10)
+                        if library['weights'][priority] > 0 and get_number_of_songs_for_priority(library, priority) > 0]
+    if not valid_priorities:
+        return None
+
+    weights = [library['weights'][priority] for priority in valid_priorities]
+    # priority = random.choices(*zip(*priority_weights))[0]
+    priority = random.choices(valid_priorities, weights)[0]
 
     songs_with_priority = [song for song in chain(*library['categories'].values()) if song['priority'] == priority]
     lowest_repeats_in_priority = min([song['number_of_repeats'] for song in songs_with_priority])
@@ -80,36 +96,51 @@ def pick_random_song_from_library(library, priority_weights):
     return song
 
 
-def get_priority_number_of_songs(library):
-    priorities = {song['priority'] for song in chain(*library['categories'].values())}
-    song_priorities = [song['priority'] for song in chain(*library['categories'].values())]
-    priority_info = [(priority, song_priorities.count(priority)) for priority in priorities]
-    return priority_info
+def get_number_of_songs_for_priority(library, priority):
+    return len([song for song in chain(*library['categories'].values()) if song['priority'] == priority])
 
 
-def calculate_relative_frequency(priorities, categories_num_songs, weights, number_of_songs_in_playlist):
+def calculate_relative_frequency(library, number_of_songs_in_playlist):
     relative_frequencies = []
-    for priority, num_songs, weight in zip(priorities, categories_num_songs, weights):
-        relative_frequency = 1.0 / (weight / sum(weights) / num_songs) / number_of_songs_in_playlist
-        relative_frequencies.append((priority, relative_frequency))
-    print(relative_frequencies)
+    valid_weights = [library['weights'][priority] for priority in range(10)
+                    if library['weights'][priority] > 0 and get_number_of_songs_for_priority(library, priority) > 0]
+    weight_sum = sum(valid_weights)
+    for priority in range(10):
+        weight = library['weights'][priority]
+        num_songs = get_number_of_songs_for_priority(library, priority)
+        try:
+            relative_frequency = 1.0 / (weight / weight_sum / num_songs) / number_of_songs_in_playlist
+            relative_frequencies.append(relative_frequency)
+        except ZeroDivisionError:
+            relative_frequencies.append('--')
+
+    return relative_frequencies
 
 
 if __name__ == '__main__':
-    def main():
-        library = create_library(test_library_path)
-        priority_info = get_priority_number_of_songs(library)
-        print(priority_info)
-        calculate_relative_frequency(*zip(*priority_info), [100, 100, 100, 100, 100], 40)
+    def test_library():
+        library = load_library('testlibrary.json')
+        for priority in range(10):
+            print(f'Songs with Priority {priority}: {get_number_of_songs_for_priority(library, priority)}')
+        relative_frequencies = calculate_relative_frequency(library, 40)
+        for priority in range(10):
+            print(f'Relative Frequency for Priority {priority}: {relative_frequencies[priority]}')
 
+        reset_repeat_data(library)
         for i in range(1000):
             print('Processing Playlists: ' + str(i))
             for _ in range(40):
-                pick_random_song_from_library(library, [(1, 100), (2, 100), (3, 100), (4, 100), (5, 100)])
+                pick_random_song_from_library(library)
+        save_library(library, 'testlibrary.json')
 
         with open('repeat data.txt', 'w') as file:
             for category in library['categories'].keys():
                 file.write(category + '\n')
                 for song in library['categories'][category]:
                     file.write('{:15}{:15}{}\n'.format(f"Priority:{song['priority']}", f"Repeats:{song['number_of_repeats']}", f"{song['song_name']}"))
-    main()
+
+    def create_a_library():
+        save_library(create_library(test_library_path), 'testlibrary.json')
+
+    # test_library()
+    # create_a_library()

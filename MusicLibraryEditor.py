@@ -16,11 +16,20 @@ class App(tk.Tk):
 
         # Menu
         menu_bar = tk.Menu(self, tearoff=False)
+
         file_menu = tk.Menu(menu_bar, tearoff=False)
         file_menu.add_command(label='Load Library', command=self.load_library)
+        file_menu.add_command(label='Save Library', command=self.save_library)
+        file_menu.add_command(label='Save Library As', command=self.save_library_as)
         file_menu.add_separator()
         file_menu.add_command(label='Exit', command=self.quit)
+
+        library_menu = tk.Menu(menu_bar, tearoff=False)
+        library_menu.add_command(label='Create Library from Directory', command=self.create_library_from_directory)
+        library_menu.add_command(label='Update Library', command=self.update_library)
+
         menu_bar.add_cascade(label='File', menu=file_menu)
+        menu_bar.add_cascade(label='Library', menu=library_menu)
         self.config(menu=menu_bar)
 
         # Library Frame
@@ -91,8 +100,11 @@ class App(tk.Tk):
             if relative_frequencies[priority] == '--':
                 weight_label_text = f'Priority: {priority}'
             else:
-                weight_label_text = 'Priority: {} A song will appear in 1 out of every {:.2f} playlists'.format(priority,
-                                                                                    float(relative_frequencies[priority]))
+                weight_label_format = 'Priority: {}, {} Songs in priority. Each song will' +\
+                                    ' appear in 1 out of every {:.2f} playlists'
+                weight_label_text = weight_label_format.format(priority,
+                                                        ml.get_number_of_songs_for_priority(self.library, priority),
+                                                        float(relative_frequencies[priority]))
             weight_label.configure(text=weight_label_text)
 
 
@@ -110,6 +122,47 @@ class App(tk.Tk):
         except Exception as e:
             print(traceback.print_exc())
             messagebox.showerror('Open Library Error', e)
+
+    def create_library_from_directory(self):
+        try:
+            library_directory = filedialog.askdirectory()
+
+            if library_directory:
+                self.library = ml.create_library(library_directory)
+                self.current_library_filename = None
+                self.current_category = None
+                self.refresh_category_om()
+                self.refresh_song_lb(None)
+                self.load_weights()
+        except Exception as e:
+            print(traceback.print_exc())
+            messagebox.showerror('Create Library Error', e)
+
+    def update_library(self):
+        pass
+
+    def save_library(self):
+        try:
+            if self.current_library_filename:
+                ml.save_library(self.library, self.current_library_filename)
+            else:
+                self.save_library_as()
+        except Exception as e:
+            print(traceback.print_exc())
+            messagebox.showerror('Create Library Error', e)
+
+    def save_library_as(self):
+        try:
+            library_filename = filedialog.asksaveasfilename(initialdir=os.getcwd(),
+                                                            title='Save music library',
+                                                            filetypes=(('json', '*.json'),),
+                                                            defaultextension='.json')
+            if library_filename:
+                ml.save_library(self.library, library_filename)
+                self.current_library_filename = library_filename
+        except Exception as e:
+            print(traceback.print_exc())
+            messagebox.showerror('Create Library Error', e)
 
     def refresh_category_om(self):
         self.category_om['menu'].delete(0, 'end')
@@ -151,6 +204,7 @@ class App(tk.Tk):
         for i in selected_song_indexes:
             self.song_name_lb.selection_set(i)
         self.song_name_lb.yview_moveto(y_view_fraction)
+        self.refresh_weight_labels()
 
     def weight_validate(self, new_value, widget_name):
         # pre validation

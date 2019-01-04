@@ -139,7 +139,22 @@ class App(tk.Tk):
             messagebox.showerror('Create Library Error', e)
 
     def update_library(self):
-        pass
+        if not self.library:
+            return
+
+        try:
+            library_directory = filedialog.askdirectory()
+
+            if library_directory:
+                self.library = ml.get_updated_library(self.library, library_directory)
+                self.current_category = None
+                self.refresh_category_om()
+                self.refresh_song_lb(None)
+                self.load_weights()
+        except Exception as e:
+            print(traceback.print_exc())
+            messagebox.showerror('Create Library Error', e)
+
 
     def save_library(self):
         try:

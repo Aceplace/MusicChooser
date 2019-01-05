@@ -4,9 +4,6 @@ import random
 from itertools import chain
 
 
-test_library_path = "E:\CoachYeiter Drive\Cheltenham2019\CheltenhamPlaylists2019\Library"
-
-
 def create_library(path):
     music_subdirectories = [name for name in os.listdir(path) if os.path.isdir(os.path.join(path, name))]
 
@@ -30,7 +27,7 @@ def create_library(path):
                 'artist_name': artist_name,
                 'song_name': song_name,
                 'file_path': music_file_path,
-                'priority': random.choices(list(range(10)), [0, 1, 2, 4, 8, 16, 0, 0, 0, 0])[0],
+                'priority': 0,
                 'number_of_repeats': 0
             }
             library['categories'][subdirectory].append(song_dict)
@@ -84,7 +81,6 @@ def pick_random_song_from_library(library):
         return None
 
     weights = [library['weights'][priority] for priority in valid_priorities]
-    # priority = random.choices(*zip(*priority_weights))[0]
     priority = random.choices(valid_priorities, weights)[0]
 
     songs_with_priority = [song for song in chain(*library['categories'].values()) if song['priority'] == priority]
@@ -117,30 +113,4 @@ def calculate_relative_frequency(library, number_of_songs_in_playlist):
     return relative_frequencies
 
 
-if __name__ == '__main__':
-    def test_library():
-        library = load_library('testlibrary.json')
-        for priority in range(10):
-            print(f'Songs with Priority {priority}: {get_number_of_songs_for_priority(library, priority)}')
-        relative_frequencies = calculate_relative_frequency(library, 40)
-        for priority in range(10):
-            print(f'Relative Frequency for Priority {priority}: {relative_frequencies[priority]}')
 
-        reset_repeat_data(library)
-        for i in range(1000):
-            print('Processing Playlists: ' + str(i))
-            for _ in range(40):
-                pick_random_song_from_library(library)
-        save_library(library, 'testlibrary.json')
-
-        with open('repeat data.txt', 'w') as file:
-            for category in library['categories'].keys():
-                file.write(category + '\n')
-                for song in library['categories'][category]:
-                    file.write('{:15}{:15}{}\n'.format(f"Priority:{song['priority']}", f"Repeats:{song['number_of_repeats']}", f"{song['song_name']}"))
-
-    def create_a_library():
-        save_library(create_library(test_library_path), 'testlibrary.json')
-
-    # test_library()
-    # create_a_library()

@@ -3,6 +3,7 @@ import traceback
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import MusicLibrary as ml
+import sys
 
 
 class App(tk.Tk):
@@ -27,6 +28,8 @@ class App(tk.Tk):
         library_menu = tk.Menu(menu_bar, tearoff=False)
         library_menu.add_command(label='Create Library from Directory', command=self.create_library_from_directory)
         library_menu.add_command(label='Update Library', command=self.update_library)
+        library_menu.add_command(label='Write Out Library Songlist', command=self.write_song_list_to_file)
+        library_menu.add_command(label='Reset repeat data', command=self.reset_repeat_data)
 
         menu_bar.add_cascade(label='File', menu=file_menu)
         menu_bar.add_cascade(label='Library', menu=library_menu)
@@ -108,10 +111,12 @@ class App(tk.Tk):
             weight_label.configure(text=weight_label_text)
 
 
-    def load_library(self):
+    def load_library(self, library_filename=None):
         try:
-            library_filename = filedialog.askopenfilename(initialdir=os.getcwd(), title="Select Music Library",
-                                                          filetypes=(("json", "*.json"),))
+            if not library_filename:
+                library_filename = filedialog.askopenfilename(initialdir=os.getcwd(), title="Select Music Library",
+                                                              filetypes=(("json", "*.json"),))
+
             if library_filename:
                 self.library = ml.load_library(library_filename)
                 self.current_library_filename = library_filename
@@ -178,6 +183,25 @@ class App(tk.Tk):
         except Exception as e:
             print(traceback.print_exc())
             messagebox.showerror('Create Library Error', e)
+
+    def write_song_list_to_file(self):
+        if not self.library:
+            return
+
+        try:
+            song_list_file_name = filedialog.asksaveasfilename(initialdir=os.getcwd(),
+                                                            title='Library Song List',
+                                                            filetypes=(('Text File', '*.txt'),),
+                                                            defaultextension='.txt')
+            if song_list_file_name:
+                ml.write_song_list(self.library, song_list_file_name)
+        except Exception as e:
+            print(traceback.print_exc())
+            messagebox.showerror('Write song list error.', e)
+
+    def reset_repeat_data(self):
+        if self.library:
+            ml.reset_repeat_data(self.library)
 
     def refresh_category_om(self):
         self.category_om['menu'].delete(0, 'end')
@@ -246,11 +270,11 @@ class App(tk.Tk):
             return False
 
 
-
-
-
-
-
 if __name__ == '__main__':
     root = App()
+    try:
+        library_file_path = sys.argv[1]
+        root.load_library(library_file_path)
+    except Exception:
+        pass
     root.mainloop()

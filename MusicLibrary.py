@@ -59,6 +59,11 @@ def get_updated_library(old_library, library_path):
 
     return library
 
+def reset_repeats(library):
+    for category in library['categories'].keys():
+        for song in category:
+            song['number_of_repeats'] = 0
+
 
 def copy_over_priority(song_to_copy_priority, category_songs):
     songs_to_modify_priority = [song for song in category_songs
@@ -111,6 +116,21 @@ def calculate_relative_frequency(library, number_of_songs_in_playlist):
             relative_frequencies.append('--')
 
     return relative_frequencies
+
+def write_song_list(library, file_path):
+    relative_frequencies = ['{:.2f}'.format(relative_frequency) if relative_frequency != '--' else '--'
+                            for relative_frequency
+                            in calculate_relative_frequency(library, 40)]
+
+    with open(file_path, 'w') as file:
+        for category in library['categories'].keys():
+            file.write(category + '\n')
+            for song in library['categories'][category]:
+                file.write('{:<15}{:<20} {} - {}\n'.format(f"Priority: {song['priority']}",
+                                                   f"Frequency: {relative_frequencies[song['priority']]}",
+                                                   f"{song['artist_name']}",
+                                                   f"{song['song_name']}"))
+            file.write('\n')
 
 
 

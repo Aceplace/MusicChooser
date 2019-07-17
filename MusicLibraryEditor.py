@@ -5,6 +5,7 @@ from tkinter import filedialog, messagebox
 import MusicLibrary as ml
 import sys
 
+SONGS_IN_PLAYLIST = 40
 
 class App(tk.Tk):
     def __init__(self):
@@ -29,6 +30,7 @@ class App(tk.Tk):
         library_menu.add_command(label='Create Library from Directory', command=self.create_library_from_directory)
         library_menu.add_command(label='Update Library', command=self.update_library)
         library_menu.add_command(label='Write Out Library Songlist', command=self.write_song_list_to_file)
+        library_menu.add_command(label='Write Out Library Songlist (Bare)', command=self.write_song_list_to_file_bare)
         library_menu.add_command(label='Reset repeat data', command=self.reset_repeat_data)
 
         menu_bar.add_cascade(label='File', menu=file_menu)
@@ -98,16 +100,21 @@ class App(tk.Tk):
 
 
     def refresh_weight_labels(self):
-        relative_frequencies = ml.calculate_relative_frequency(self.library, 40)
+        relative_frequencies = ml.calculate_relative_frequency(self.library, SONGS_IN_PLAYLIST)
         for priority, weight_label in enumerate(list(zip(*self.weight_modifier_widgets))[1]):
+            num_songs_in_priority = ml.get_number_of_songs_for_priority(self.library, priority)
+            priority_playlist_frequency = float(num_songs_in_priority / relative_frequencies[priority]) \
+                                            if relative_frequencies[priority] != '--' else 0.0
             if relative_frequencies[priority] == '--':
                 weight_label_text = f'Priority: {priority}'
             else:
                 weight_label_format = 'Priority: {}, {} Songs in priority. Each song will' +\
-                                    ' appear in 1 out of every {:.2f} playlists'
+                                    ' appear in 1 out of every {:.2f} playlists ({:.2f} out of {} for a single playlist)'
                 weight_label_text = weight_label_format.format(priority,
-                                                        ml.get_number_of_songs_for_priority(self.library, priority),
-                                                        float(relative_frequencies[priority]))
+                                                        num_songs_in_priority,
+                                                        float(relative_frequencies[priority]),
+                                                        priority_playlist_frequency,
+                                                        SONGS_IN_PLAYLIST)
             weight_label.configure(text=weight_label_text)
 
 
@@ -195,6 +202,21 @@ class App(tk.Tk):
                                                             defaultextension='.txt')
             if song_list_file_name:
                 ml.write_song_list(self.library, song_list_file_name)
+        except Exception as e:
+            print(traceback.print_exc())
+            messagebox.showerror('Write song list error.', e)
+
+    def write_song_list_to_file_bare(self):
+        if not self.library:
+            return
+
+        try:
+            song_list_file_name = filedialog.asksaveasfilename(initialdir=os.getcwd(),
+                                                            title='Library Song List',
+                                                            filetypes=(('Text File', '*.txt'),),
+                                                            defaultextension='.txt')
+            if song_list_file_name:
+                ml.write_song_list_bare(self.library, song_list_file_name)
         except Exception as e:
             print(traceback.print_exc())
             messagebox.showerror('Write song list error.', e)

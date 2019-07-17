@@ -132,5 +132,13 @@ def write_song_list(library, file_path):
                                                    f"{song['song_name']}"))
             file.write('\n')
 
+def write_song_list_bare(library, file_path):
+    with open(file_path, 'w') as file:
+        for category in library['categories'].keys():
+            file.write('(cat)' + category + '\n')
+            for song in library['categories'][category]:
+                file.write(f'{song["artist_name"]}-"{song["song_name"]}\n')
+            file.write('\n')
+
 
 

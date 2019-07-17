@@ -31,6 +31,7 @@ class App(tk.Tk):
         library_menu.add_command(label='Update Library', command=self.update_library)
         library_menu.add_command(label='Write Out Library Songlist', command=self.write_song_list_to_file)
         library_menu.add_command(label='Write Out Library Songlist (Bare)', command=self.write_song_list_to_file_bare)
+        library_menu.add_command(label='Write Out Library Songlist (Json)', command=self.write_song_list_to_file_json)
         library_menu.add_command(label='Reset repeat data', command=self.reset_repeat_data)
 
         menu_bar.add_cascade(label='File', menu=file_menu)
@@ -217,6 +218,21 @@ class App(tk.Tk):
                                                             defaultextension='.txt')
             if song_list_file_name:
                 ml.write_song_list_bare(self.library, song_list_file_name)
+        except Exception as e:
+            print(traceback.print_exc())
+            messagebox.showerror('Write song list error.', e)
+
+    def write_song_list_to_file_json(self):
+        if not self.library:
+            return
+
+        try:
+            song_list_file_name = filedialog.asksaveasfilename(initialdir=os.getcwd(),
+                                                            title='Library Song List',
+                                                            filetypes=(('Text File', '*.txt'),),
+                                                            defaultextension='.txt')
+            if song_list_file_name:
+                ml.write_song_list_json(self.library, song_list_file_name)
         except Exception as e:
             print(traceback.print_exc())
             messagebox.showerror('Write song list error.', e)

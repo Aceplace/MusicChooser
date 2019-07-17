@@ -140,5 +140,9 @@ def write_song_list_bare(library, file_path):
                 file.write(f'{song["artist_name"]}-"{song["song_name"]}\n')
             file.write('\n')
 
+def write_song_list_json(library, file_path):
+    with open(file_path, 'w') as file:
+        json.dump(library, file)
+
 
 

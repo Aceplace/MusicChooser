@@ -3,3 +3,4 @@ env/
 sandbox/
 dist/
 __pycache__/
+venv/

@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import MusicLibrary as ml
 import sys
+from itertools import chain
 
 SONGS_IN_PLAYLIST = 40
 
@@ -15,6 +16,7 @@ class App(tk.Tk):
         self.current_category = None
         self.weight_validate_command = (self.register(self.weight_validate), '%P', '%W')
         self.loading_weights = False
+        self.current_songs = []
 
         # Menu
         menu_bar = tk.Menu(self, tearoff=False)
@@ -29,6 +31,7 @@ class App(tk.Tk):
         library_menu = tk.Menu(menu_bar, tearoff=False)
         library_menu.add_command(label='Create Library from Directory', command=self.create_library_from_directory)
         library_menu.add_command(label='Update Library', command=self.update_library)
+        library_menu.add_command(label='Update Library, Keep Repeats', command=self.update_library_keep_repeats)
         library_menu.add_command(label='Write Out Library Songlist', command=self.write_song_list_to_file)
         library_menu.add_command(label='Write Out Library Songlist (Bare)', command=self.write_song_list_to_file_bare)
         library_menu.add_command(label='Write Out Library Songlist (Json)', command=self.write_song_list_to_file_json)
@@ -49,9 +52,14 @@ class App(tk.Tk):
         tk.Label(library_frame, text='Categories').grid(row=0, column=0)
         self.category_om = tk.OptionMenu(library_frame, tk.StringVar(), 'NONE')
         self.category_om.grid(row=1, column=0)
+        
+        self.priority_om = tk.OptionMenu(library_frame, tk.StringVar(), 'NONE')
+        for priority in range(20):
+            self.priority_om['menu'].add_command(label=priority, command=lambda p=priority: self.refresh_song_lb_p(p))
+        self.priority_om.grid(row=2, column=0)
 
         # Library Frame -> Song Name Listbox
-        tk.Label(library_frame, text='Song Names').grid(row=2, column=0)
+        #tk.Label(library_frame, text='Song Names').grid(row=2, column=0)
 
         song_name_lb_frame = tk.Frame(library_frame)
         song_name_lb_frame.grid(row=3, column=0, sticky='NS')
@@ -72,7 +80,7 @@ class App(tk.Tk):
         priorities_frame = tk.Frame(library_frame)
         priorities_frame.grid(row=3, column=1, sticky='NW')
         tk.Label(priorities_frame, text='Set Priorities:').pack()
-        for i in range(10):
+        for i in range(20):
             tk.Button(priorities_frame, text=f' {i} ', command=lambda p=i: self.set_priority(p)).pack()
 
         # Priority Weights Frame
@@ -81,7 +89,7 @@ class App(tk.Tk):
 
         tk.Label(priority_weights_frame, text='Priority Weights').grid(row=0, column=0)
         self.weight_modifier_widgets = []
-        for i in range(10):
+        for i in range(20):
             entry_var = tk.StringVar()  # Used to detect changes to weight entries and automatically update stuff
             entry_var.trace_add('write', self.weight_entry_callback)
             weight_entry = tk.Entry(priority_weights_frame, textvariable=entry_var, validate="key",
@@ -98,7 +106,6 @@ class App(tk.Tk):
         if self.library:
             self.library['weights'] = [int(weight_widgets[0].get()) for weight_widgets in self.weight_modifier_widgets]
             self.refresh_weight_labels()
-
 
     def refresh_weight_labels(self):
         relative_frequencies = ml.calculate_relative_frequency(self.library, SONGS_IN_PLAYLIST)
@@ -160,6 +167,23 @@ class App(tk.Tk):
 
             if library_directory:
                 self.library = ml.get_updated_library(self.library, library_directory)
+                self.current_category = None
+                self.refresh_category_om()
+                self.refresh_song_lb(None)
+                self.load_weights()
+        except Exception as e:
+            print(traceback.print_exc())
+            messagebox.showerror('Create Library Error', e)
+
+    def update_library_keep_repeats(self):
+        if not self.library:
+            return
+
+        try:
+            library_directory = filedialog.askdirectory()
+
+            if library_directory:
+                self.library = ml.get_updated_library_keep_repeats(self.library, library_directory)
                 self.current_category = None
                 self.refresh_category_om()
                 self.refresh_song_lb(None)
@@ -245,13 +269,34 @@ class App(tk.Tk):
         self.category_om['menu'].delete(0, 'end')
         for category in self.library['categories'].keys():
             self.category_om['menu'].add_command(label=category, command=lambda c=category: self.refresh_song_lb(c))
+        
 
     def refresh_song_lb(self, category):
         self.song_name_lb.delete(0, tk.END)
+        self.current_songs = []
         self.current_category = category
         if not self.current_category:
             return
         for song in self.library['categories'][category]:
+            self.current_songs.append(song)
+            insert_string = f"[ {song['priority']} ] {song['artist_name']} - {song['song_name']}"
+            self.song_name_lb.insert(tk.END, insert_string)
+        self.song_name_lb.config(width=0)
+        
+    def refresh_song_lb_p(self, priority):
+        self.song_name_lb.delete(0, tk.END)
+        self.current_songs = []
+        songs = chain(*self.library['categories'].values())
+        for song in songs:
+            if song['priority'] == priority:
+                self.current_songs.append(song)
+                insert_string = f"[ {song['priority']} ] {song['artist_name']} - {song['song_name']}"
+                self.song_name_lb.insert(tk.END, insert_string)
+        self.song_name_lb.config(width=0)
+    
+    def refresh_song_lb_keep(self, priority):
+        self.song_name_lb.delete(0, tk.END)
+        for song in self.current_songs:
             insert_string = f"[ {song['priority']} ] {song['artist_name']} - {song['song_name']}"
             self.song_name_lb.insert(tk.END, insert_string)
         self.song_name_lb.config(width=0)
@@ -259,25 +304,33 @@ class App(tk.Tk):
 
     def load_weights(self):
         self.loading_weights = True # This prevents weight entry callback from modifying library while library is writing into it
-        for priority in range(10):
+        for priority in range(20):
             self.weight_modifier_widgets[priority][2].set(str(self.library['weights'][priority]))
         self.loading_weights = False
         self.refresh_weight_labels()
 
 
     def set_priority(self, priority):
-        if not self.current_category:
-            return
+        #if not self.current_category:
+        #    return
+        
+        songs = chain(*self.library['categories'].values())      
 
         selected_song_indexes = self.song_name_lb.curselection()
         y_view_fraction, _ = self.song_name_lb.yview()
         for lb_song_string in map(self.song_name_lb.get, selected_song_indexes):
-            artist_name, song_name = map(str.strip, lb_song_string[5:].split('-'))
-            song = [song for song in self.library['categories'][self.current_category]
-                    if song['artist_name'] == artist_name and song['song_name'] == song_name][0]
-            song['priority'] = priority
+            artist_name, song_name = map(str.strip, lb_song_string[6:].split('-'))
+            print(artist_name, song_name)
+            for song in songs:
+                if song['artist_name'] == artist_name and song['song_name'] == song_name:
+                    print('set priority')
+                    song['priority'] = priority
+                    break
+            #song = [song for song in songs
+            #        if song['artist_name'] == artist_name and song['song_name'] == song_name][0]
+            #song['priority'] = priority
 
-        self.refresh_song_lb(self.current_category)
+        self.refresh_song_lb_keep(self.current_category)
         for i in selected_song_indexes:
             self.song_name_lb.selection_set(i)
         self.song_name_lb.yview_moveto(y_view_fraction)

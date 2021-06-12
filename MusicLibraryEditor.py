@@ -1,6 +1,7 @@
 import os
 import traceback
 import tkinter as tk
+import typing
 from tkinter import filedialog, messagebox
 import MusicLibrary as ml
 import sys
@@ -8,15 +9,16 @@ from itertools import chain
 
 SONGS_IN_PLAYLIST = 40
 
+
 class App(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
-        self.library = None
-        self.current_library_filename = None
-        self.current_category = None
+        self.library: typing.Optional[ml.MusicLibrary] = None
+        self.current_library_filename: typing.Optional[str] = None
+        self.current_category: typing.Optional[str] = None
         self.weight_validate_command = (self.register(self.weight_validate), '%P', '%W')
-        self.loading_weights = False
-        self.current_songs = []
+        self.loading_weights: bool = False
+        self.current_songs: typing.List[ml.SongInfo] = []
 
         # Menu
         menu_bar = tk.Menu(self, tearoff=False)
@@ -59,7 +61,7 @@ class App(tk.Tk):
         self.priority_om.grid(row=2, column=0)
 
         # Library Frame -> Song Name Listbox
-        #tk.Label(library_frame, text='Song Names').grid(row=2, column=0)
+        # tk.Label(library_frame, text='Song Names').grid(row=2, column=0)
 
         song_name_lb_frame = tk.Frame(library_frame)
         song_name_lb_frame.grid(row=3, column=0, sticky='NS')
@@ -104,7 +106,7 @@ class App(tk.Tk):
         if self.loading_weights:
             return
         if self.library:
-            self.library['weights'] = [int(weight_widgets[0].get()) for weight_widgets in self.weight_modifier_widgets]
+            self.library.weights = [int(weight_widgets[0].get()) for weight_widgets in self.weight_modifier_widgets]
             self.refresh_weight_labels()
 
     def refresh_weight_labels(self):
@@ -125,8 +127,7 @@ class App(tk.Tk):
                                                         SONGS_IN_PLAYLIST)
             weight_label.configure(text=weight_label_text)
 
-
-    def load_library(self, library_filename=None):
+    def load_library(self, library_filename: typing.Optional[str] = None):
         try:
             if not library_filename:
                 library_filename = filedialog.askopenfilename(initialdir=os.getcwd(), title="Select Music Library",
@@ -191,7 +192,6 @@ class App(tk.Tk):
         except Exception as e:
             print(traceback.print_exc())
             messagebox.showerror('Create Library Error', e)
-
 
     def save_library(self):
         try:
@@ -267,9 +267,8 @@ class App(tk.Tk):
 
     def refresh_category_om(self):
         self.category_om['menu'].delete(0, 'end')
-        for category in self.library['categories'].keys():
+        for category in self.library.categories.keys():
             self.category_om['menu'].add_command(label=category, command=lambda c=category: self.refresh_song_lb(c))
-        
 
     def refresh_song_lb(self, category):
         self.song_name_lb.delete(0, tk.END)
@@ -277,44 +276,42 @@ class App(tk.Tk):
         self.current_category = category
         if not self.current_category:
             return
-        for song in self.library['categories'][category]:
+        for song in self.library.categories[category]:
             self.current_songs.append(song)
-            insert_string = f"[ {song['priority']} ] {song['artist_name']} - {song['song_name']}"
+            insert_string = f"[ {song.priority} ] {song.artist_name} - {song.song_name}"
             self.song_name_lb.insert(tk.END, insert_string)
         self.song_name_lb.config(width=0)
         
     def refresh_song_lb_p(self, priority):
         self.song_name_lb.delete(0, tk.END)
         self.current_songs = []
-        songs = chain(*self.library['categories'].values())
+        songs = chain(*self.library.categories.values())
         for song in songs:
-            if song['priority'] == priority:
+            if song.priority == priority:
                 self.current_songs.append(song)
-                insert_string = f"[ {song['priority']} ] {song['artist_name']} - {song['song_name']}"
+                insert_string = f"[ {song.priority} ] {song.artist_name} - {song.song_name}"
                 self.song_name_lb.insert(tk.END, insert_string)
         self.song_name_lb.config(width=0)
     
     def refresh_song_lb_keep(self, priority):
         self.song_name_lb.delete(0, tk.END)
         for song in self.current_songs:
-            insert_string = f"[ {song['priority']} ] {song['artist_name']} - {song['song_name']}"
+            insert_string = f"[ {song.priority} ] {song.artist_name} - {song.song_name}"
             self.song_name_lb.insert(tk.END, insert_string)
         self.song_name_lb.config(width=0)
 
-
     def load_weights(self):
-        self.loading_weights = True # This prevents weight entry callback from modifying library while library is writing into it
+        self.loading_weights = True  # This prevents weight entry callback from modifying library while library is writing into it
         for priority in range(20):
-            self.weight_modifier_widgets[priority][2].set(str(self.library['weights'][priority]))
+            self.weight_modifier_widgets[priority][2].set(str(self.library.weights[priority]))
         self.loading_weights = False
         self.refresh_weight_labels()
 
-
-    def set_priority(self, priority):
-        #if not self.current_category:
+    def set_priority(self, priority: int):
+        # if not self.current_category:
         #    return
         
-        songs = chain(*self.library['categories'].values())      
+        songs = chain(*self.library.categories.values())
 
         selected_song_indexes = self.song_name_lb.curselection()
         y_view_fraction, _ = self.song_name_lb.yview()
@@ -322,13 +319,13 @@ class App(tk.Tk):
             artist_name, song_name = map(str.strip, lb_song_string[6:].split('-'))
             print(artist_name, song_name)
             for song in songs:
-                if song['artist_name'] == artist_name and song['song_name'] == song_name:
+                if song.artist_name == artist_name and song.song_name == song_name:
                     print('set priority')
-                    song['priority'] = priority
+                    song.priority = priority
                     break
-            #song = [song for song in songs
-            #        if song['artist_name'] == artist_name and song['song_name'] == song_name][0]
-            #song['priority'] = priority
+            # song = [song for song in songs
+            #        if song.artist_name == artist_name and song.song_name == song_name][0]
+            # song.priority = priority
 
         self.refresh_song_lb_keep(self.current_category)
         for i in selected_song_indexes:
@@ -344,13 +341,13 @@ class App(tk.Tk):
             for priority, entry_widget_check in enumerate(list(zip(*self.weight_modifier_widgets))[0]):
                 if entry_widget is entry_widget_check:
                     self.weight_modifier_widgets[priority][2].set('0')
-        elif len(new_value) == 2 and new_value[0]=='0' and new_value[1].isdigit():
+        elif len(new_value) == 2 and new_value[0] == '0' and new_value[1].isdigit():
             for priority, entry_widget_check in enumerate(list(zip(*self.weight_modifier_widgets))[0]):
                 if entry_widget is entry_widget_check:
                     self.weight_modifier_widgets[priority][2].set(new_value[1])
         entry_widget.config(validate='key', validatecommand=self.weight_validate_command)
 
-        if len(new_value) > 1 and new_value[0]=='0':
+        if len(new_value) > 1 and new_value[0] == '0':
             return False
         try:
             int_value = int(new_value)

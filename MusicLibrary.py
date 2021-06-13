@@ -1,4 +1,4 @@
-import jsonpickle
+import json
 import os
 import random
 import typing
@@ -58,16 +58,14 @@ def create_library(path: str) -> MusicLibrary:
     return library
 
 
-def save_library(library, file_name):
+def save_library(library: MusicLibrary, file_name: str):
     with open(file_name, 'w') as file:
-        json_str = jsonpickle.encode(library, indent=4)
-        file.write(json_str)
+        json.dump(to_dict(library), file, indent=4)
 
 
-def load_library(file_name):
+def load_library(file_name) -> MusicLibrary:
     with open(file_name, 'r') as file:
-        json_str = file.read()
-        library = jsonpickle.decode(json_str)
+        library = from_dict(json.load(file))
     return library
 
 
@@ -147,6 +145,13 @@ def pick_random_song_from_library(library: MusicLibrary) -> typing.Optional[Song
     return song_info
 
 
+def get_random_song_path_from_library(library: MusicLibrary) -> str:
+    song = pick_random_song_from_library(library)
+    if not song:
+        return ''
+    return song.file_path
+
+
 def get_number_of_songs_for_priority(library: MusicLibrary, priority: int) -> int:
     return len([song for song in chain(*library.categories.values()) if song.priority == priority])
 
@@ -195,21 +200,51 @@ def write_song_list_bare(library: MusicLibrary, file_path: str):
 
 def write_song_list_json(library: MusicLibrary, file_path: str):
     with open(file_path, 'w') as file:
-        json_str = jsonpickle.encode(library)
-        file.write(json_str)
+        json.dump(to_dict(library), file)
 
 
-# class MusicLibraryEncoder(json.JSONEncoder):
-#     def default(self, ml: MusicLibrary) -> typing.Any:
-#         assert(isinstance(ml, MusicLibrary))
-#
-#         {
-#             'categories': {'rap': [{song_info_stuff}]}
-#             'weights': []
-#
-#         }
-#
-#         categories = {}
-#         for category, category_songs_infos in ml.categories.items():
+def to_dict(ml: MusicLibrary) -> typing.Any:
+    assert(isinstance(ml, MusicLibrary))
+
+    obj_categories = {}
+    for ml_category, ml_category_songs_infos in ml.categories.items():
+        categories_song_infos = []
+        for ml_song_info in ml_category_songs_infos:
+            obj_song_info = {
+                'song_name': ml_song_info.song_name,
+                'artist_name': ml_song_info.artist_name,
+                'priority': ml_song_info.priority,
+                'file_path': ml_song_info.file_path,
+                'number_of_repeats': ml_song_info.number_of_repeats,
+            }
+            categories_song_infos.append(obj_song_info)
+        obj_categories[ml_category] = categories_song_infos
+
+    obj_weights = ml.weights
+
+    obj_ml = {
+        'categories': obj_categories,
+        'weights': obj_weights
+    }
+
+    return obj_ml
 
 
+def from_dict(obj) -> MusicLibrary:
+    ml_object = MusicLibrary()
+
+    for obj_category, obj_song_infos in obj['categories'].items():
+        ml_category_song_infos = []
+        for obj_song_info in obj_song_infos:
+            ml_song_info = SongInfo()
+            ml_song_info.song_name = obj_song_info['song_name']
+            ml_song_info.artist_name = obj_song_info['artist_name']
+            ml_song_info.priority = obj_song_info['priority']
+            ml_song_info.file_path = obj_song_info['file_path']
+            ml_song_info.number_of_repeats = obj_song_info['number_of_repeats']
+            ml_category_song_infos.append(ml_song_info)
+        ml_object.categories[obj_category] = ml_category_song_infos
+
+    ml_object.weights = obj['weights']
+
+    return ml_object

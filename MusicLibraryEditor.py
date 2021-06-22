@@ -38,6 +38,7 @@ class App(tk.Tk):
         library_menu.add_command(label='Write Out Library Songlist (Bare)', command=self.write_song_list_to_file_bare)
         library_menu.add_command(label='Write Out Library Songlist (Json)', command=self.write_song_list_to_file_json)
         library_menu.add_command(label='Reset repeat data', command=self.reset_repeat_data)
+        library_menu.add_command(label='Reset repeat data special', command=self.reset_repeat_data_special)
 
         menu_bar.add_cascade(label='File', menu=file_menu)
         menu_bar.add_cascade(label='Library', menu=library_menu)
@@ -264,6 +265,10 @@ class App(tk.Tk):
     def reset_repeat_data(self):
         if self.library:
             ml.reset_repeat_data(self.library)
+
+    def reset_repeat_data_special(self):
+        if self.library:
+            ml.reset_repeats_special(self.library)
 
     def refresh_category_om(self):
         self.category_om['menu'].delete(0, 'end')

@@ -102,6 +102,17 @@ def reset_repeats(library: MusicLibrary):
         for song in library.categories[category]:
             song.number_of_repeats = 0
 
+def reset_repeats_special(library: MusicLibrary):
+    songs = [song for song in chain(*library.categories.values())]
+    for priority in range(0, num_priorities):
+        songs_with_priority = [song for song in songs if song.priority == priority]
+        max_repeats = max(song.number_of_repeats for song in songs_with_priority)
+        for song in songs_with_priority:
+            song.number_of_repeats = 1 if song.number_of_repeats == max_repeats else 0
+
+def reset_repeat_data(library: MusicLibrary):
+    for song in chain(*library.categories.values()):
+        song.number_of_repeats = 0
 
 def copy_over_priority(song_to_copy_priority: SongInfo, category_songs: typing.List[SongInfo]):
     songs_to_modify_priority = [song for song in category_songs
@@ -120,11 +131,6 @@ def copy_over_priority_and_repeats(song_to_copy_priority: SongInfo, category_son
     for song in songs_to_modify_priority:
         song.priority = song_to_copy_priority.priority
         song.number_of_repeats = song_to_copy_priority.number_of_repeats
-
-
-def reset_repeat_data(library: MusicLibrary):
-    for song in chain(*library.categories.values()):
-        song.number_of_repeats = 0
 
 
 def pick_random_song_from_library(library: MusicLibrary) -> typing.Optional[SongInfo]:
